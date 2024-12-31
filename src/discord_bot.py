@@ -43,7 +43,6 @@ def read_servers():
             return orjson.loads(file.read())
     return []
 
-# Initialize client with activity
 activity = discord.Activity(
     type=discord.ActivityType.watching, 
     name="server waves"
