@@ -30,7 +30,7 @@ MAPS = {
     "var": "Vardohus Fortress",
     "haye": "La Haye Sainte",
     "sai": "La Haye Sainte",
-    "ros": "Roscloff",
+    "ros": "Roscoff",
     "san": "San Sebastian",
     "Kauby": "Kaub",
 }
