@@ -27,7 +27,6 @@ MAPS = {
     "hou": "Hougoumont",
     "oug": "Hougoumont",
     "mont": "Hougoumont",
-    "var": "Vardohus Fortress",
     "haye": "La Haye Sainte",
     "sai": "La Haye Sainte",
     "ros": "Roscoff",
