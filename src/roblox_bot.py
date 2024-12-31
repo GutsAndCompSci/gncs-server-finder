@@ -154,12 +154,12 @@ default_api.SetVariable(
 )
 
 # BEGGINING OF MY BULLSHIT 
-api_key = '.BFWAikwu_m+xwN$2=Ht;j9E'
+api_key = ''
 
 
 
 def send_data(data, api_key):
-    url = 'http://ec2-18-188-94-75.us-east-2.compute.amazonaws.com:5000/submit'
+    url = 'http://*************/submit'
     headers = {
         'Content-Type': 'application/json',
         'X-API-Key': api_key,
