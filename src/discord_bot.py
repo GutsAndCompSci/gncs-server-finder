@@ -74,7 +74,7 @@ async def on_ready():
 @tree.command(name="findserver", description="Finds G&B high wave endless servers")
 async def find_servers(
     interaction: discord.Interaction, 
-    map: Literal["La ferme d'En-Haut", "Hougoumont", "Tyrolean Village", "La Haye Sainte", "Vardohus Fortress"] | None,
+    map: Literal["La ferme d'En-Haut", "Hougoumont", "Tyrolean Village", "La Haye Sainte"] | None,
     region: Literal["US", "EU", "Asia", "Australia"] | None,
     platform: Literal["PC", "VC", "Mobile", "Hardcore"] | None,
     ordering: Literal["Ascending", "Descending"] = "Descending",
