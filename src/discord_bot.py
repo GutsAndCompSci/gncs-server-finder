@@ -7,8 +7,8 @@ import os
 import asyncio
 import logging
 from dotenv import load_dotenv
-
 load_dotenv()
+
 logging.basicConfig(level=logging.INFO)
 
 PLATFORM_ICON = {
@@ -43,12 +43,59 @@ def read_servers():
             return orjson.loads(file.read())
     return []
 
+def read_reminders():
+    if os.path.exists("reminders.json"):
+        with open("reminders.json", "rb") as file:
+            return orjson.loads(file.read())
+    return []
+
+def save_reminders(reminders):
+    with open("reminders.json", "wb") as file:
+        file.write(orjson.dumps(reminders))
+
 activity = discord.Activity(
     type=discord.ActivityType.watching, 
     name="server waves"
 )
+
 client = discord.Client(intents=discord.Intents.none(), activity=activity)
 tree = CommandTree(client)
+
+async def check_reminders():
+    while True:
+        servers = read_servers()
+        reminders = read_reminders()
+        updated_reminders = []
+        
+        for reminder in reminders:
+            matching_servers = [
+                s for s in servers
+                if (not reminder["map"] or reminder["map"] in s["map"]) and
+                   (not reminder["platform"] or reminder["platform"] == s["platform"]) and
+                   (not reminder["region"] or reminder["region"] in s["region"]) and
+                   s["wave"] >= reminder["target_wave"]
+            ]
+            
+            if matching_servers:
+                try:
+                    user = await client.fetch_user(reminder["user_id"])
+                    for server in matching_servers:
+                        await user.send(
+                            f"🌊 Wave {reminder['target_wave']} reached!\n" +
+                            f"Server: {server['name']}\n" +
+                            f"Current wave: {server['wave']}\n" +
+                            f"Map: {server['map']}\n" +
+                            f"Platform: {PLATFORM_ICON[server['platform']]}\n" +
+                            f"Region: {REGION_ICONS[server.get('location', server['region'])]}"
+                        )
+                except discord.NotFound:
+                    # crashed the bot last time someone got banned off discord 🤌
+                    pass
+            else:
+                updated_reminders.append(reminder)
+        
+        save_reminders(updated_reminders)
+        await asyncio.sleep(60)
 
 async def update_status():
     while True:
@@ -70,6 +117,62 @@ async def on_ready():
     await tree.sync()
     logging.info(f'Logged in as {client.user}!')
     client.loop.create_task(update_status())
+    client.loop.create_task(check_reminders())
+
+@tree.command(name="rm", description="Set a reminder for when a server reaches a specific wave")
+async def remind_me(
+    interaction: discord.Interaction,
+    wave: int,
+    map: Literal["La ferme d'En-Haut", "Hougoumont", "Tyrolean Village", "La Haye Sainte"] | None = None,
+    region: Literal["US", "EU", "Asia", "Australia"] | None = None,
+    platform: Literal["PC", "VC", "Mobile", "Hardcore"] | None = None,
+):
+    if wave < 1:
+        return await interaction.response.send_message(
+            "Wave number must be positive!",
+            ephemeral=True
+        )
+    
+    reminders = read_reminders()
+    existing = any(
+        r["user_id"] == interaction.user.id and
+        r["target_wave"] == wave and
+        r["map"] == map and
+        r["platform"] == platform and
+        r["region"] == region
+        for r in reminders
+    )
+    
+    if existing:
+        return await interaction.response.send_message(
+            "You already have this reminder set!",
+            ephemeral=True
+        )
+    
+    reminders.append({
+        "user_id": interaction.user.id,
+        "target_wave": wave,
+        "map": map,
+        "platform": platform,
+        "region": region,
+        "created_at": int(interaction.created_at.timestamp())
+    })
+    
+    save_reminders(reminders)
+    
+    filters = []
+    if map:
+        filters.append(f"Map: {map}")
+    if platform:
+        filters.append(f"Platform: {PLATFORM_ICON[platform]}")
+    if region:
+        filters.append(f"Region: {region}")
+    
+    response = f"I'll notify you when a server reaches wave {wave}"
+    if filters:
+        response += f" with these filters:\n" + "\n".join(f"• {f}" for f in filters)
+    
+    await interaction.response.send_message(response, ephemeral=True)
 
 @tree.command(name="findserver", description="Finds G&B high wave endless servers")
 async def find_servers(
@@ -117,8 +220,34 @@ async def find_servers(
     output += f"-# Last updated <t:{updated}:R>"
     await interaction.response.send_message(output)
 
+@tree.command(name="myreminders", description="List your active wave reminders")
+async def list_reminders(interaction: discord.Interaction):
+    reminders = read_reminders()
+    user_reminders = [r for r in reminders if r["user_id"] == interaction.user.id]
+    
+    if not user_reminders:
+        return await interaction.response.send_message(
+            "You don't have any active reminders.",
+            ephemeral=True
+        )
+    
+    output = "Your active reminders:\n"
+    for r in user_reminders:
+        filters = [f"Wave {r['target_wave']}"]
+        if r["map"]:
+            filters.append(f"Map: {r['map']}")
+        if r["platform"]:
+            filters.append(f"Platform: {PLATFORM_ICON[r['platform']]}")
+        if r["region"]:
+            filters.append(f"Region: {r['region']}")
+        output += "• " + " | ".join(filters) + f" (Set <t:{r['created_at']}:R>)\n"
+    
+    await interaction.response.send_message(output, ephemeral=True)
+
 @find_servers.error
-async def on_servers_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
+@remind_me.error
+@list_reminders.error
+async def on_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
     print(str(error))
     await interaction.response.send_message(str(error), ephemeral=True)
 
