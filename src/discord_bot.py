@@ -89,7 +89,6 @@ async def check_reminders():
                             f"Region: {REGION_ICONS[server.get('location', server['region'])]}"
                         )
                 except discord.NotFound:
-                    # crashed the bot last time someone got banned off discord 🤌
                     pass
             else:
                 updated_reminders.append(reminder)
